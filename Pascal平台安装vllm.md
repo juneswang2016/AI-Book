@@ -11,7 +11,7 @@
 pip install --upgrade pip
 pip install "cmake>=3.26" wheel packaging ninja "setuptools-scm>=8" numpy
 ```
-3、安装cuda环境，<span class="red-text">并跳过驱动安装</span>
+3、安装cuda环境，并跳过驱动安装
 ```
 wget https://developer.download.nvidia.com/compute/cuda/12.9.0/local_installers/cuda_12.9.0_575.51.03_linux.run
 sudo sh cuda_12.9.0_575.51.03_linux.run
@@ -32,12 +32,15 @@ export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 git clone -b v0.8.5 --single-branch https://github.com/vllm-project/vllm.git
 ```
 下载后：
+
 1、打开项目根目录下的CMakeLists.txt，找到34行的CUDA_SUPPORTED_ARCHS，并加上6.0;6.1
 
 最后看起来应该像下面这样：
+
 set(CUDA_SUPPORTED_ARCHS "6.0;6.1;7.0;7.2;7.5;8.0;8.6;8.7;8.9;9.0;10.0;10.1;12.0")
 
 2、因为vllm的cuda代码用了half精度的atomicAdd，然而pascal架构的计算能力并不支持这个操作
+
 找到项目目录下csrc/moe/moe_wna16.cu，添加以下代码：
 ```
 #ifdef __CUDA_ARCH__
@@ -63,14 +66,18 @@ __device__ __forceinline__ void atomicAdd(half* address, half val) {
 #endif
 ```
 3、降低block size或者num stages
+
 解决triton.runtime.errors.OutOfResources: out of resource: shared memory, Required: 65536, Hardware limit: 49152. Reducing block sizes or `num_stages` may help.错误
+
 找到python文件夹下site-packages/vllm/attention/ops/prefix_prefill.py 903行，把BLOCK_M BLOCK_N各降低一半
 
 不出意外pip install -e .可以正确编译安装。<span class="red-text">（需要开启梯子，编译时要连接github）</span>
 
 # 运行
 1、如果遇到pascal gpu被pytorch告知不被支持错误
+
 https://github.com/sasha0552/pascal-pkgs-ci
+
 解决办法：终端运行
 ```
 sed -e "s/.major < 7/.major < 6/g"                                 \
